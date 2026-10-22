@@ -429,13 +429,18 @@
       opacity: 1;
     }
 
-    /* Map Address Search Bar Overlay */
-    .map-search-bar {
+    /* Map Address Search Bar Overlay with Autocomplete Dropdown */
+    .map-search-wrapper {
       position: absolute;
       top: 14px;
       left: 50%;
       transform: translateX(-50%);
       z-index: 500;
+      width: 90%;
+      max-width: 520px;
+    }
+
+    .map-search-bar {
       display: flex;
       align-items: center;
       gap: 8px;
@@ -444,8 +449,7 @@
       border-radius: 30px;
       box-shadow: var(--shadow-lg);
       border: 1px solid var(--border-color);
-      width: 90%;
-      max-width: 520px;
+      width: 100%;
     }
 
     .map-search-bar .search-box {
@@ -482,6 +486,47 @@
 
     .map-search-bar button#btn-map-search:hover {
       background: var(--accent-hover);
+    }
+
+    /* Выпадающий список результатов поиска */
+    #search-dropdown {
+      position: absolute;
+      top: calc(100% + 6px);
+      left: 0;
+      width: 100%;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      box-shadow: var(--shadow-lg);
+      max-height: 280px;
+      overflow-y: auto;
+      z-index: 1000;
+      display: none;
+    }
+
+    #search-dropdown.open {
+      display: block;
+    }
+
+    .search-dropdown-item {
+      padding: 10px 14px;
+      font-size: 0.85rem;
+      color: var(--text-main);
+      cursor: pointer;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: background 0.15s;
+    }
+
+    .search-dropdown-item:last-child {
+      border-bottom: none;
+    }
+
+    .search-dropdown-item:hover {
+      background: rgba(37, 99, 235, 0.08);
+      color: var(--accent);
     }
 
     /* --- Virtual On-Screen Keyboard Styles --- */
@@ -925,19 +970,22 @@
 
   <!-- Map Container -->
   <div id="map-container">
-    <!-- Top Address/ZIP Map Search Bar -->
-    <div class="map-search-bar">
-      <!-- Поле поиска по адресу на карте -->
-      <div class="search-box">
-        <i data-lucide="search" class="search-icon"></i>
-        <input type="text" id="map-address-search" placeholder="Paste full address, ZIP, or city...">
-        <div class="input-actions">
-          <button type="button" class="input-action-btn keyboard-btn" data-target="map-address-search" title="On-Screen Keyboard">
-            <i data-lucide="keyboard" style="width: 16px; height: 16px;"></i>
-          </button>
+    <!-- Top Address/ZIP Map Search Bar with Dropdown -->
+    <div class="map-search-wrapper">
+      <div class="map-search-bar">
+        <div class="search-box">
+          <i data-lucide="search" class="search-icon"></i>
+          <input type="text" id="map-address-search" placeholder="Type city (e.g. Ashland), ZIP, or address...">
+          <div class="input-actions">
+            <button type="button" class="input-action-btn keyboard-btn" data-target="map-address-search" title="On-Screen Keyboard">
+              <i data-lucide="keyboard" style="width: 16px; height: 16px;"></i>
+            </button>
+          </div>
         </div>
+        <button id="btn-map-search"><i data-lucide="navigation" style="width: 14px; height: 14px;"></i> Search</button>
       </div>
-      <button id="btn-map-search"><i data-lucide="navigation" style="width: 14px; height: 14px;"></i> Search</button>
+      <!-- Выпадающий список вариантов -->
+      <div id="search-dropdown"></div>
     </div>
 
     <button class="map-btn-overlay" id="btn-recenter">
@@ -1182,7 +1230,7 @@
 
   let pendingClientPayload = null;
   let activeKeyboardInput = null; 
-  let isShiftActive = true; // По умолчанию включен Shift для первой буквы
+  let isShiftActive = true; 
 
   document.addEventListener("DOMContentLoaded", async () => {
     checkAdminState();
@@ -1221,7 +1269,7 @@
         
         if (key.length === 1 && /[a-z]/.test(key)) {
           btn.classList.add('letter-key');
-          btn.textContent = key.toUpperCase(); // Всегда отображаем буквы капслоком на кнопках
+          btn.textContent = key.toUpperCase();
         } else {
           btn.textContent = displayLabel;
         }
@@ -1243,7 +1291,6 @@
         const targetId = btn.getAttribute('data-target');
         const targetInput = document.getElementById(targetId);
 
-        // Если клавиатура уже открыта для этого же инпута — закрываем её
         if (activeKeyboardInput === targetInput && kbContainer.classList.contains('open')) {
           kbContainer.classList.remove('open');
           activeKeyboardInput = null;
@@ -1251,7 +1298,7 @@
           activeKeyboardInput = targetInput;
           if (activeKeyboardInput) {
             activeKeyboardInput.focus();
-            updateShiftState(); // Проверяем состояние Shift при открытии
+            updateShiftState();
             kbContainer.classList.add('open');
           }
         }
@@ -1259,7 +1306,6 @@
     });
   }
 
-  // Автоматическое определение нужен ли Shift (если строка пустая или после пробела)
   function updateShiftState() {
     if (!activeKeyboardInput) return;
     const val = activeKeyboardInput.value;
@@ -1285,6 +1331,7 @@
     if (key === 'Close') {
       document.getElementById('virtual-keyboard').classList.remove('open');
       activeKeyboardInput = null;
+      document.getElementById('search-dropdown').classList.remove('open');
       return;
     }
 
@@ -1310,14 +1357,13 @@
     } else if (key === 'Enter') {
       document.getElementById('virtual-keyboard').classList.remove('open');
       if (activeKeyboardInput.id === 'map-address-search') {
-        searchMapLocation();
+        fetchMapLocationSuggestions(activeKeyboardInput.value, true);
       }
       activeKeyboardInput = null;
       return;
     } else if (key === 'Space') {
       activeKeyboardInput.value = val.substring(0, start) + ' ' + val.substring(end);
       activeKeyboardInput.selectionStart = activeKeyboardInput.selectionEnd = start + 1;
-      // После пробела автоматически включаем Shift для первой буквы следующего слова
       isShiftActive = true;
       const shiftBtn = document.querySelector('.shift-btn');
       if (shiftBtn) shiftBtn.classList.add('active-shift');
@@ -1329,7 +1375,6 @@
       activeKeyboardInput.value = val.substring(0, start) + charToAdd + val.substring(end);
       activeKeyboardInput.selectionStart = activeKeyboardInput.selectionEnd = start + 1;
 
-      // После ввода первой буквы автоматически выключаем Shift для остальных букв слова
       isShiftActive = false;
       const shiftBtn = document.querySelector('.shift-btn');
       if (shiftBtn) shiftBtn.classList.remove('active-shift');
@@ -1338,7 +1383,6 @@
     activeKeyboardInput.dispatchEvent(new Event('input', { bubbles: true }));
   }
 
-  // Автоматическая подписка на изменения таблицы clients в Supabase Realtime
   function setupRealtimeSubscription() {
     supabaseClient
       .channel('public:clients')
@@ -1415,6 +1459,13 @@
     map.on('click', async (e) => {
       const { lat, lng } = e.latlng;
       await fetchBuildingDetails(lat, lng);
+    });
+
+    // Клик мимо выпадающего списка закрывает его
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.map-search-wrapper')) {
+        document.getElementById('search-dropdown').classList.remove('open');
+      }
     });
   }
 
@@ -1574,16 +1625,23 @@
     return cleaned.trim();
   }
 
-  async function searchMapLocation() {
-    const rawInput = document.getElementById('map-address-search').value;
-    const query = cleanSearchQuery(rawInput);
-    if (!query) return;
+  // --- Умный поиск с выпадающим списком штатов/городов ---
+  async function fetchMapLocationSuggestions(inputVal, autoSelectFirst = false) {
+    const query = cleanSearchQuery(inputVal);
+    const dropdown = document.getElementById('search-dropdown');
+    
+    if (!query) {
+      dropdown.classList.remove('open');
+      dropdown.innerHTML = '';
+      return;
+    }
 
     const btn = document.getElementById('btn-map-search');
     btn.disabled = true;
     btn.innerHTML = `<span class="geocoding-spinner"></span>`;
 
-    const searchUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query + ', USA')}&limit=1&accept-language=en-US,en`;
+    // Запрашиваем до 8 вариантов с привязкой к США (countrycodes=us)
+    const searchUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=us&limit=8&accept-language=en-US,en`;
 
     try {
       const res = await fetch(searchUrl, {
@@ -1592,21 +1650,46 @@
       const data = await res.json();
 
       if (data && data.length > 0) {
-        const lat = parseFloat(data[0].lat);
-        const lng = parseFloat(data[0].lon);
+        if (autoSelectFirst && data.length === 1) {
+          selectLocationResult(parseFloat(data[0].lat), parseFloat(data[0].lon), data[0].display_name);
+          dropdown.classList.remove('open');
+          return;
+        }
 
-        map.flyTo([lat, lng], 17, { duration: 1.5 });
-        await fetchBuildingDetails(lat, lng);
+        dropdown.innerHTML = '';
+        data.forEach(item => {
+          const div = document.createElement('div');
+          div.className = 'search-dropdown-item';
+          div.innerHTML = `<i data-lucide="map-pin" style="width:14px; height:14px; color:var(--accent); flex-shrink:0;"></i> <span>${item.display_name}</span>`;
+          
+          div.addEventListener('click', () => {
+            selectLocationResult(parseFloat(item.lat), parseFloat(item.lon), item.display_name);
+            dropdown.classList.remove('open');
+          });
+
+          dropdown.appendChild(div);
+        });
+
+        initIcons();
+        dropdown.classList.add('open');
       } else {
-        alert('Location or address not found in the United States.');
+        dropdown.innerHTML = `<div class="search-dropdown-item" style="color:var(--text-muted);">No locations found in the US.</div>`;
+        dropdown.classList.add('open');
       }
     } catch (err) {
-      alert('Error searching for address.');
+      console.error('Search error:', err);
     } finally {
       btn.disabled = false;
       btn.innerHTML = `<i data-lucide="navigation" style="width: 14px; height: 14px;"></i> Search`;
       initIcons();
     }
+  }
+
+  async function selectLocationResult(lat, lng, displayName) {
+    document.getElementById('map-address-search').value = displayName;
+    document.getElementById('search-dropdown').classList.remove('open');
+    map.flyTo([lat, lng], 13, { duration: 1.5 });
+    await fetchBuildingDetails(lat, lng);
   }
 
   function convertStateToAbbr(stateName) {
@@ -1813,11 +1896,26 @@
   function setupEventListeners() {
     document.getElementById('search-input').addEventListener('input', renderClients);
 
-    document.getElementById('btn-map-search').addEventListener('click', searchMapLocation);
-    document.getElementById('map-address-search').addEventListener('keypress', (e) => {
+    const searchInput = document.getElementById('map-address-search');
+    
+    // Автоматический поиск при вводе с задержкой (debounce)
+    let searchTimeout = null;
+    searchInput.addEventListener('input', (e) => {
+      clearTimeout(searchTimeout);
+      const val = e.target.value;
+      searchTimeout = setTimeout(() => {
+        fetchMapLocationSuggestions(val, false);
+      }, 400);
+    });
+
+    document.getElementById('btn-map-search').addEventListener('click', () => {
+      fetchMapLocationSuggestions(searchInput.value, true);
+    });
+
+    searchInput.addEventListener('keypress', (e) => {
       if (e.key === 'Enter') {
         e.preventDefault();
-        searchMapLocation();
+        fetchMapLocationSuggestions(searchInput.value, true);
       }
     });
 
@@ -2111,14 +2209,16 @@
   };
 
   window.deleteClient = function(id) {
-    if (!isAdmin) return;
+    if (!isAdmin) isAdmin_check: {
+      if (!isAdmin) return;
+    }
     if (confirm("Are you sure you want to delete this client?")) {
       supabaseClient.from('clients').delete().eq('id', id).then(({ error }) => {
         if (!error) {
           loadClientsFromSupabase();
           showToast("Client successfully deleted from database!");
         } else {
-          alert('Failed to delete: ' + error.message);
+          alert('Failed, error: ' + error.message);
         }
       });
     }
