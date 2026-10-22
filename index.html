@@ -937,7 +937,7 @@
 
     <!-- Search and Controls (Clients List) -->
     <div class="controls-panel">
-      <!-- Поле поиска по клиентам -->
+      <!-- Поиск по клиентам -->
       <div class="search-box">
         <i data-lucide="users" class="search-icon"></i>
         <input type="text" id="search-input" class="search-input" placeholder="Search in client database...">
@@ -964,13 +964,13 @@
 
     <!-- Client Directory List -->
     <div class="client-list-container" id="client-list">
-      <!-- Cards rendered via JS -->
+      <!-- Карточки клиентов -->
     </div>
   </div>
 
   <!-- Map Container -->
   <div id="map-container">
-    <!-- Top Address/ZIP Map Search Bar with Dropdown -->
+    <!-- Поисковая строка на карте с выпадающим списком -->
     <div class="map-search-wrapper">
       <div class="map-search-bar">
         <div class="search-box">
@@ -1461,7 +1461,6 @@
       await fetchBuildingDetails(lat, lng);
     });
 
-    // Клик мимо выпадающего списка закрывает его
     document.addEventListener('click', (e) => {
       if (!e.target.closest('.map-search-wrapper')) {
         document.getElementById('search-dropdown').classList.remove('open');
@@ -1625,7 +1624,7 @@
     return cleaned.trim();
   }
 
-  // --- Умный поиск с выпадающим списком штатов/городов ---
+  // --- Умный поиск с масштабированием по границам объекта (boundingbox) ---
   async function fetchMapLocationSuggestions(inputVal, autoSelectFirst = false) {
     const query = cleanSearchQuery(inputVal);
     const dropdown = document.getElementById('search-dropdown');
@@ -1640,7 +1639,6 @@
     btn.disabled = true;
     btn.innerHTML = `<span class="geocoding-spinner"></span>`;
 
-    // Запрашиваем до 8 вариантов с привязкой к США (countrycodes=us)
     const searchUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=us&limit=8&accept-language=en-US,en`;
 
     try {
@@ -1651,7 +1649,7 @@
 
       if (data && data.length > 0) {
         if (autoSelectFirst && data.length === 1) {
-          selectLocationResult(parseFloat(data[0].lat), parseFloat(data[0].lon), data[0].display_name);
+          selectLocationResult(data[0]);
           dropdown.classList.remove('open');
           return;
         }
@@ -1663,7 +1661,7 @@
           div.innerHTML = `<i data-lucide="map-pin" style="width:14px; height:14px; color:var(--accent); flex-shrink:0;"></i> <span>${item.display_name}</span>`;
           
           div.addEventListener('click', () => {
-            selectLocationResult(parseFloat(item.lat), parseFloat(item.lon), item.display_name);
+            selectLocationResult(item);
             dropdown.classList.remove('open');
           });
 
@@ -1685,10 +1683,22 @@
     }
   }
 
-  async function selectLocationResult(lat, lng, displayName) {
-    document.getElementById('map-address-search').value = displayName;
+  async function selectLocationResult(item) {
+    document.getElementById('map-address-search').value = item.display_name;
     document.getElementById('search-dropdown').classList.remove('open');
-    map.flyTo([lat, lng], 13, { duration: 1.5 });
+
+    const lat = parseFloat(item.lat);
+    const lng = parseFloat(item.lon);
+
+    // Если у результата есть рамка границ (boundingbox), используем её для идеального масштаба
+    if (item.boundingbox && item.boundingbox.length === 4) {
+      const southWest = [parseFloat(item.boundingbox[0]), parseFloat(item.boundingbox[2])];
+      const northEast = [parseFloat(item.boundingbox[1]), parseFloat(item.boundingbox[3])];
+      map.fitBounds([southWest, northEast], { padding: [50, 50], maxZoom: 16, duration: 1.5 });
+    } else {
+      map.flyTo([lat, lng], 13, { duration: 1.5 });
+    }
+
     await fetchBuildingDetails(lat, lng);
   }
 
@@ -1898,7 +1908,6 @@
 
     const searchInput = document.getElementById('map-address-search');
     
-    // Автоматический поиск при вводе с задержкой (debounce)
     let searchTimeout = null;
     searchInput.addEventListener('input', (e) => {
       clearTimeout(searchTimeout);
@@ -2209,9 +2218,7 @@
   };
 
   window.deleteClient = function(id) {
-    if (!isAdmin) isAdmin_check: {
-      if (!isAdmin) return;
-    }
+    if (!isAdmin) return;
     if (confirm("Are you sure you want to delete this client?")) {
       supabaseClient.from('clients').delete().eq('id', id).then(({ error }) => {
         if (!error) {
