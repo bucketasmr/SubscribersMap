@@ -1432,10 +1432,10 @@
       maxZoom: 19
     });
 
-    const esriSatellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-      attribution: 'Tiles &copy; Esri World Imagery',
-      maxZoom: 19
-    });
+//    const esriSatellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+//    attribution: 'Tiles &copy; Esri World Imagery',
+//    maxZoom: 19
+//  });
 
     const esriTransportation = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 });
     const esriLabels = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 });
@@ -1450,7 +1450,7 @@
 
     const baseMaps = {
       "Street Map": esriStreets,
-      "Satellite View": esriSatellite,
+//      "Satellite View": esriSatellite,
       "Hybrid View (Satellite + Roads)": hybridLayer
     };
     
