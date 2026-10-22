@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>US Client Locator CRM & Building Inspector</title>
+  <title>Interactive Map of Subscribers</title>
   
   <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
@@ -162,13 +162,13 @@
 
     .search-box {
       position: relative;
+      display: flex;
+      align-items: center;
     }
 
-    .search-box i {
+    .search-box i.search-icon {
       position: absolute;
       left: 12px;
-      top: 50%;
-      transform: translateY(-50%);
       color: var(--text-muted);
       width: 18px;
       height: 18px;
@@ -176,7 +176,7 @@
 
     .search-input {
       width: 100%;
-      padding: 10px 12px 10px 38px;
+      padding: 10px 76px 10px 38px;
       border-radius: 8px;
       border: 1px solid var(--border-color);
       background: var(--bg-primary);
@@ -187,6 +187,42 @@
 
     .search-input:focus {
       border-color: var(--accent);
+    }
+
+    /* Кнопки микрофона и клавиатуры внутри полей ввода */
+    .input-actions {
+      position: absolute;
+      right: 8px;
+      display: flex;
+      gap: 4px;
+    }
+
+    .input-action-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--text-muted);
+      padding: 4px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: color 0.2s;
+    }
+
+    .input-action-btn:hover {
+      color: var(--accent);
+    }
+
+    .input-action-btn.listening {
+      color: var(--danger);
+      animation: pulse 1s infinite;
+    }
+
+    @keyframes pulse {
+      0% { opacity: 1; }
+      50% { opacity: 0.4; }
+      100% { opacity: 1; }
     }
 
     .action-bar {
@@ -423,17 +459,24 @@
       max-width: 520px;
     }
 
-    .map-search-bar input {
+    .map-search-bar .search-box {
       flex: 1;
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .map-search-bar input {
+      width: 100%;
       border: none;
       background: transparent;
       outline: none;
       font-size: 0.88rem;
       color: var(--text-main);
-      padding: 6px 4px;
+      padding: 6px 76px 6px 4px;
     }
 
-    .map-search-bar button {
+    .map-search-bar button#btn-map-search {
       background: var(--accent);
       color: white;
       border: none;
@@ -448,8 +491,75 @@
       transition: background 0.2s;
     }
 
-    .map-search-bar button:hover {
+    .map-search-bar button#btn-map-search:hover {
       background: var(--accent-hover);
+    }
+
+    /* --- Virtual On-Screen Keyboard Styles --- */
+    #virtual-keyboard {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      background: #1e293b;
+      padding: 12px;
+      box-shadow: 0 -4px 20px rgba(0,0,0,0.3);
+      z-index: 3000;
+      display: none;
+      flex-direction: column;
+      gap: 6px;
+      border-top: 1px solid var(--border-color);
+      user-select: none;
+    }
+
+    #virtual-keyboard.open {
+      display: flex;
+    }
+
+    .kb-row {
+      display: flex;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .kb-key {
+      background: #334155;
+      color: #f8fafc;
+      border: none;
+      border-radius: 6px;
+      padding: 10px 0;
+      min-width: 36px;
+      flex: 1;
+      max-width: 50px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 2px 0 #0f172a;
+      transition: background 0.1s, transform 0.1s;
+      text-transform: capitalize;
+    }
+
+    .kb-key:active {
+      background: #475569;
+      transform: translateY(2px);
+      box-shadow: none;
+    }
+
+    .kb-key.wide {
+      flex: 1.8;
+      max-width: 85px;
+      font-size: 0.8rem;
+      background: #475569;
+    }
+
+    .kb-key.space {
+      flex: 6;
+      max-width: 350px;
+      background: #475569;
+    }
+
+    .kb-key.active-shift {
+      background: var(--accent);
     }
 
     /* Building Details Slide Panel */
@@ -753,8 +863,8 @@
           <i data-lucide="map-pin"></i>
         </div>
         <div class="brand-title">
-          <h1>US Client Locator</h1>
-          <p>Interactive Map & Building Inspector</p>
+          <h1>Interactive Map of Subscribers</h1>
+          <p>Building Inspector & CRM</p>
         </div>
       </div>
       <div class="header-actions">
@@ -784,9 +894,18 @@
 
     <!-- Search and Controls (Clients List) -->
     <div class="controls-panel">
+      <!-- Поле поиска по клиентам с голосовым вводом и экранной клавиатурой -->
       <div class="search-box">
-        <i data-lucide="users"></i>
+        <i data-lucide="users" class="search-icon"></i>
         <input type="text" id="search-input" class="search-input" placeholder="Search in client database...">
+        <div class="input-actions">
+          <button type="button" class="input-action-btn voice-btn" data-target="search-input" title="Voice Search">
+            <i data-lucide="mic" style="width: 16px; height: 16px;"></i>
+          </button>
+          <button type="button" class="input-action-btn keyboard-btn" data-target="search-input" title="On-Screen Keyboard">
+            <i data-lucide="keyboard" style="width: 16px; height: 16px;"></i>
+          </button>
+        </div>
       </div>
 
       <div class="action-bar admin-only">
@@ -813,8 +932,19 @@
   <div id="map-container">
     <!-- Top Address/ZIP Map Search Bar -->
     <div class="map-search-bar">
-      <i data-lucide="search" style="width: 18px; height: 18px; color: var(--text-muted); flex-shrink: 0;"></i>
-      <input type="text" id="map-address-search" placeholder="Paste full address, ZIP, or city...">
+      <!-- Поле поиска по адресу на карте с голосовым вводом и экранной клавиатурой -->
+      <div class="search-box">
+        <i data-lucide="search" class="search-icon"></i>
+        <input type="text" id="map-address-search" placeholder="Paste full address, ZIP, or city...">
+        <div class="input-actions">
+          <button type="button" class="input-action-btn voice-btn" data-target="map-address-search" title="Voice Search">
+            <i data-lucide="mic" style="width: 16px; height: 16px;"></i>
+          </button>
+          <button type="button" class="input-action-btn keyboard-btn" data-target="map-address-search" title="On-Screen Keyboard">
+            <i data-lucide="keyboard" style="width: 16px; height: 16px;"></i>
+          </button>
+        </div>
+      </div>
       <button id="btn-map-search"><i data-lucide="navigation" style="width: 14px; height: 14px;"></i> Search</button>
     </div>
 
@@ -873,6 +1003,14 @@
       </div>
     </div>
   </div>
+</div>
+
+<!-- Virtual On-Screen Keyboard HTML -->
+<div id="virtual-keyboard">
+  <div class="kb-row" id="kb-row-1"></div>
+  <div class="kb-row" id="kb-row-2"></div>
+  <div class="kb-row" id="kb-row-3"></div>
+  <div class="kb-row" id="kb-row-4"></div>
 </div>
 
 <!-- Admin Login Modal -->
@@ -1050,22 +1188,188 @@
   let tempClickMarker = null;
 
   let pendingClientPayload = null;
+  let activeKeyboardInput = null; // Текущий инпут, куда пишет экранная клавиатура
+  let isShiftActive = false;     // Состояние регистра клавиатуры
 
   document.addEventListener("DOMContentLoaded", async () => {
     checkAdminState();
     initMap();
     initIcons();
     await loadClientsFromSupabase();
-    setupRealtimeSubscription(); // Автоматическое обновление в реальном времени
+    setupRealtimeSubscription();
     setupEventListeners();
+    initVirtualKeyboard();
+    initVoiceRecognition();
   });
+
+  // --- Инициализация экранной клавиатуры (Английский язык, стиль Caps/Shift с первой заглавной) ---
+  function initVirtualKeyboard() {
+    const kbContainer = document.getElementById('virtual-keyboard');
+    const rows = [
+      ['1','2','3','4','5','6','7','8','9','0','Backspace'],
+      ['q','w','e','r','t','y','u','i','o','p'],
+      ['Shift','a','s','d','f','g','h','j','k','l','Enter'],
+      ['z','x','c','v','b','n','m','Space','Close']
+    ];
+
+    rows.forEach((row, rIdx) => {
+      const rowEl = document.getElementById(`kb-row-${rIdx + 1}`);
+      row.forEach(key => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'kb-key';
+        
+        let displayLabel = key;
+        if (key === 'Backspace') displayLabel = '⌫ Back';
+        if (key === 'Space') { displayLabel = 'Space'; btn.classList.add('space'); }
+        if (key === 'Shift') { displayLabel = '⇧ Shift'; btn.classList.add('wide', 'shift-btn'); }
+        if (key === 'Enter') { displayLabel = 'Enter'; btn.classList.add('wide'); }
+        if (key === 'Close') { displayLabel = '✕ Close'; btn.classList.add('wide'); }
+        
+        if (key.length === 1 && /[a-z]/.test(key)) {
+          btn.classList.add('letter-key');
+          // Каждой кнопке задаем отображение с заглавной первой буквой
+          btn.textContent = key.toUpperCase();
+        } else {
+          btn.textContent = displayLabel;
+        }
+
+        btn.dataset.key = key;
+        
+        btn.addEventListener('click', (e) => {
+          e.preventDefault();
+          handleVirtualKeyPress(key);
+        });
+
+        rowEl.appendChild(btn);
+      });
+    });
+
+    // Открытие клавиатуры при клике на иконку
+    document.querySelectorAll('.keyboard-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const targetId = btn.getAttribute('data-target');
+        activeKeyboardInput = document.getElementById(targetId);
+        if (activeKeyboardInput) {
+          activeKeyboardInput.focus();
+          kbContainer.classList.add('open');
+        }
+      });
+    });
+  }
+
+  function handleVirtualKeyPress(key) {
+    if (!activeKeyboardInput) return;
+    const start = activeKeyboardInput.selectionStart;
+    const end = activeKeyboardInput.selectionEnd;
+    const val = activeKeyboardInput.value;
+
+    if (key === 'Close') {
+      document.getElementById('virtual-keyboard').classList.remove('open');
+      activeKeyboardInput = null;
+      return;
+    }
+
+    if (key === 'Shift') {
+      isShiftActive = !isShiftActive;
+      const shiftBtn = document.querySelector('.shift-btn');
+      if (shiftBtn) {
+        if (isShiftActive) shiftBtn.classList.add('active-shift');
+        else shiftBtn.classList.remove('active-shift');
+      }
+      return;
+    }
+
+    if (key === 'Backspace') {
+      if (start !== end) {
+        activeKeyboardInput.value = val.substring(0, start) + val.substring(end);
+        activeKeyboardInput.selectionStart = activeKeyboardInput.selectionEnd = start;
+      } else if (start > 0) {
+        activeKeyboardInput.value = val.substring(0, start - 1) + val.substring(start);
+        activeKeyboardInput.selectionStart = activeKeyboardInput.selectionEnd = start - 1;
+      }
+    } else if (key === 'Enter') {
+      document.getElementById('virtual-keyboard').classList.remove('open');
+      // Если это поиск по карте, инициируем поиск
+      if (activeKeyboardInput.id === 'map-address-search') {
+        searchMapLocation();
+      }
+      activeKeyboardInput = null;
+      return;
+    } else if (key === 'Space') {
+      activeKeyboardInput.value = val.substring(0, start) + ' ' + val.substring(end);
+      activeKeyboardInput.selectionStart = activeKeyboardInput.selectionEnd = start + 1;
+    } else {
+      // Буквы или цифры
+      let charToAdd = key;
+      if (/[a-z]/.test(key)) {
+        // Если Shift активен — пишем в верхнем регистре, иначе в нижнем
+        charToAdd = isShiftActive ? key.toUpperCase() : key.toLowerCase();
+      }
+      activeKeyboardInput.value = val.substring(0, start) + charToAdd + val.substring(end);
+      activeKeyboardInput.selectionStart = activeKeyboardInput.selectionEnd = start + 1;
+    }
+
+    // Вызываем событие input для обновления фильтрации списка
+    activeKeyboardInput.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+
+  // --- Инициализация голосового ввода (Speech Recognition) ---
+  function initVoiceRecognition() {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    
+    document.querySelectorAll('.voice-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const targetId = btn.getAttribute('data-target');
+        const targetInput = document.getElementById(targetId);
+
+        if (!SpeechRecognition) {
+          alert('Speech Recognition is not supported in your browser.');
+          return;
+        }
+
+        const recognition = new SpeechRecognition();
+        recognition.lang = 'en-US';
+        recognition.interimResults = false;
+        recognition.maxAlternatives = 1;
+
+        btn.classList.add('listening');
+
+        recognition.onresult = (event) => {
+          const speechResult = event.results[0][0].transcript;
+          targetInput.value = speechResult;
+          targetInput.dispatchEvent(new Event('input', { bubbles: true }));
+          
+          if (targetId === 'map-address-search') {
+            searchMapLocation();
+          }
+        };
+
+        recognition.onerror = () => {
+          btn.classList.remove('listening');
+        };
+
+        // Как только речь заканчивается (автоматический стоп), убираем индикатор
+        recognition.onend = () => {
+          btn.classList.remove('listening');
+        };
+
+        try {
+          recognition.start();
+        } catch (err) {
+          btn.classList.remove('listening');
+        }
+      });
+    });
+  }
 
   // Автоматическая подписка на изменения таблицы clients в Supabase Realtime
   function setupRealtimeSubscription() {
     supabaseClient
       .channel('public:clients')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'clients' }, payload => {
-        // Как только кто-то добавил, изменил или удалил запись в базе — подтягиваем свежие данные во всех открытых вкладках
         loadClientsFromSupabase();
         showToast("Database updated in real-time!");
       })
