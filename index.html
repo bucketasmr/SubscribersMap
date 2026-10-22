@@ -378,6 +378,32 @@
       background: #e5e7eb;
     }
 
+    /* Toast Notification */
+    #toast-notification {
+      position: absolute;
+      bottom: 24px;
+      right: 24px;
+      z-index: 2000;
+      background: #10b981;
+      color: white;
+      padding: 12px 20px;
+      border-radius: 8px;
+      box-shadow: var(--shadow-lg);
+      font-size: 0.9rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transform: translateY(100px);
+      opacity: 0;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    #toast-notification.show {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
     /* Map Address Search Bar Overlay */
     .map-search-bar {
       position: absolute;
@@ -797,6 +823,12 @@
     </button>
     <div id="map"></div>
 
+    <!-- Toast Notification Element -->
+    <div id="toast-notification">
+      <i data-lucide="check-circle" style="width: 18px; height: 18px;"></i>
+      <span id="toast-text">Data updated successfully!</span>
+    </div>
+
     <!-- Building Details Slide-Over Panel -->
     <div id="building-panel">
       <div class="building-panel-header">
@@ -981,6 +1013,23 @@
   </div>
 </div>
 
+<!-- Custom Edit Choice Modal (3 buttons) -->
+<div class="modal-overlay" id="modal-edit-choice">
+  <div class="modal modal-sm">
+    <div class="modal-header">
+      <h2>Edit Client</h2>
+    </div>
+    <div class="modal-body" style="font-size: 0.9rem; color: var(--text-main);">
+      Do you want to update the current client or save as a new one?
+    </div>
+    <div class="modal-footer" style="flex-direction: column; gap: 8px;">
+      <button type="button" class="btn btn-primary" id="btn-choice-update" style="width: 100%;">Update Data</button>
+      <button type="button" class="btn btn-secondary" id="btn-choice-new" style="width: 100%; background: #2563eb; color: white; border: none;">New Client</button>
+      <button type="button" class="btn btn-secondary" id="btn-choice-cancel" style="width: 100%;">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <!-- Leaflet JS -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 
@@ -1000,13 +1049,39 @@
   let currentClickedBuilding = null;
   let tempClickMarker = null;
 
+  let pendingClientPayload = null;
+
   document.addEventListener("DOMContentLoaded", async () => {
     checkAdminState();
     initMap();
     initIcons();
     await loadClientsFromSupabase();
+    setupRealtimeSubscription(); // Автоматическое обновление в реальном времени
     setupEventListeners();
   });
+
+  // Автоматическая подписка на изменения таблицы clients в Supabase Realtime
+  function setupRealtimeSubscription() {
+    supabaseClient
+      .channel('public:clients')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'clients' }, payload => {
+        // Как только кто-то добавил, изменил или удалил запись в базе — подтягиваем свежие данные во всех открытых вкладках
+        loadClientsFromSupabase();
+        showToast("Database updated in real-time!");
+      })
+      .subscribe();
+  }
+
+  function showToast(message = "Data updated successfully!") {
+    const toast = document.getElementById('toast-notification');
+    const toastText = document.getElementById('toast-text');
+    if (toastText) toastText.innerText = message;
+
+    toast.classList.add('show');
+    setTimeout(() => {
+      toast.classList.remove('show');
+    }, 3500);
+  }
 
   function checkAdminState() {
     if (isAdmin) {
@@ -1440,7 +1515,6 @@
     return { lat: 39.8283, lng: -98.5795 };
   }
 
-  // --- Phone Number Auto-Formatter for US Format (+1 (555) 000-0000) ---
   function formatUSPhone(value) {
     const numbers = value.replace(/\D/g, '');
     const cleanNum = numbers.startsWith('1') ? numbers.slice(1) : numbers;
@@ -1485,7 +1559,6 @@
       modalLogin.classList.remove('open');
     });
 
-    // --- Admin Login Check against Supabase Database ---
     document.getElementById('form-login').addEventListener('submit', async (e) => {
       e.preventDefault();
       const user = document.getElementById('login-username').value.trim();
@@ -1546,14 +1619,7 @@
       e.preventDefault();
       if (!isAdmin) return;
 
-      const saveBtn = document.getElementById('btn-save-client');
-      const btnText = document.getElementById('save-btn-text');
-      saveBtn.disabled = true;
-      btnText.innerHTML = `<span class="geocoding-spinner"></span> Saving to Cloud...`;
-
       const idVal = document.getElementById('client-id').value;
-      const id = idVal ? idVal : Date.now().toString();
-      
       const firstName = document.getElementById('firstName').value.trim();
       const lastName = document.getElementById('lastName').value.trim();
       const company = document.getElementById('company').value.trim();
@@ -1566,10 +1632,27 @@
       const zipCode = document.getElementById('zipCode').value.trim();
       const status = document.getElementById('status').value;
 
-      const coords = await geocodeAddress(address, city, state, zipCode);
+      if (idVal) {
+        pendingClientPayload = {
+          id: idVal,
+          first_name: firstName,
+          last_name: lastName,
+          company: company,
+          job_title: jobTitle,
+          phone: phone,
+          email: email,
+          address: address,
+          city: city,
+          state: state,
+          zip_code: zipCode,
+          status: status
+        };
+        closeModal();
+        document.getElementById('modal-edit-choice').classList.add('open');
+        return;
+      }
 
-      const dbPayload = {
-        id: id,
+      await saveClientData(idVal || Date.now().toString(), {
         first_name: firstName,
         last_name: lastName,
         company: company,
@@ -1580,32 +1663,28 @@
         city: city,
         state: state,
         zip_code: zipCode,
-        status: status,
-        lat: coords.lat,
-        lng: coords.lng
-      };
+        status: status
+      });
+    });
 
-      const { error } = await supabaseClient
-        .from('clients')
-        .upsert(dbPayload);
-
-      if (error) {
-        alert('Error saving client to Supabase: ' + error.message);
-        saveBtn.disabled = false;
-        btnText.innerText = "Save & Locate on Map";
-        return;
+    document.getElementById('btn-choice-update').addEventListener('click', async () => {
+      document.getElementById('modal-edit-choice').classList.remove('open');
+      if (pendingClientPayload) {
+        await saveClientData(pendingClientPayload.id, pendingClientPayload, false);
       }
+    });
 
-      await loadClientsFromSupabase();
-
-      saveBtn.disabled = false;
-      btnText.innerText = "Save & Locate on Map";
-      closeModal();
-
-      const savedClient = clients.find(c => c.id === id);
-      if (savedClient) {
-        focusClientOnMap(savedClient);
+    document.getElementById('btn-choice-new').addEventListener('click', async () => {
+      document.getElementById('modal-edit-choice').classList.remove('open');
+      if (pendingClientPayload) {
+        const newId = Date.now().toString();
+        await saveClientData(newId, pendingClientPayload, true);
       }
+    });
+
+    document.getElementById('btn-choice-cancel').addEventListener('click', () => {
+      document.getElementById('modal-edit-choice').classList.remove('open');
+      pendingClientPayload = null;
     });
 
     document.getElementById('theme-toggle').addEventListener('click', () => {
@@ -1658,7 +1737,7 @@
               });
             }
             await loadClientsFromSupabase();
-            alert('Clients imported successfully to Supabase!');
+            showToast("Import and database update completed!");
           }
         } catch (err) {
           alert('Invalid JSON file format.');
@@ -1666,6 +1745,53 @@
       };
       reader.readAsText(file);
     });
+  }
+
+  async function saveClientData(targetId, payloadData, isNew = false) {
+    const saveBtn = document.getElementById('btn-save-client');
+    if (saveBtn) saveBtn.disabled = true;
+
+    const coords = await geocodeAddress(payloadData.address, payloadData.city, payloadData.state, payloadData.zip_code);
+
+    const dbPayload = {
+      id: String(targetId),
+      first_name: payloadData.first_name,
+      last_name: payloadData.last_name,
+      company: payloadData.company,
+      job_title: payloadData.job_title,
+      phone: payloadData.phone,
+      email: payloadData.email,
+      address: payloadData.address,
+      city: payloadData.city,
+      state: payloadData.state,
+      zip_code: payloadData.zip_code,
+      status: payloadData.status,
+      lat: coords.lat,
+      lng: coords.lng
+    };
+
+    const { error } = await supabaseClient
+      .from('clients')
+      .upsert(dbPayload);
+
+    if (error) {
+      alert('Error saving client to Supabase: ' + error.message);
+      if (saveBtn) saveBtn.disabled = false;
+      return;
+    }
+
+    await loadClientsFromSupabase();
+
+    if (saveBtn) saveBtn.disabled = false;
+    closeModal();
+    pendingClientPayload = null;
+
+    showToast("Data updated successfully!");
+
+    const savedClient = clients.find(c => c.id === String(targetId));
+    if (savedClient) {
+      focusClientOnMap(savedClient);
+    }
   }
 
   function openModal(client = null) {
@@ -1682,7 +1808,7 @@
       document.getElementById('company').value = client.company;
       document.getElementById('jobTitle').value = client.jobTitle || '';
       document.getElementById('phone').value = client.phone || '+1 ';
-      document.getElementById('email').value, document.getElementById('email').value = client.email;
+      document.getElementById('email').value = client.email;
       document.getElementById('address').value = client.address;
       document.getElementById('city').value = client.city;
       document.getElementById('state').value = client.state;
@@ -1713,6 +1839,7 @@
       supabaseClient.from('clients').delete().eq('id', id).then(({ error }) => {
         if (!error) {
           loadClientsFromSupabase();
+          showToast("Client successfully deleted from database!");
         } else {
           alert('Failed to delete: ' + error.message);
         }
