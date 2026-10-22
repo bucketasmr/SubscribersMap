@@ -1,0 +1,1724 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>US Client Locator CRM & Building Inspector</title>
+  
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+  <!-- Google Fonts & Lucide Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Supabase JS SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    :root {
+      --bg-primary: #f8fafc;
+      --bg-surface: #ffffff;
+      --bg-sidebar: #ffffff;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --border-color: #e2e8f0;
+      --accent: #2563eb;
+      --accent-hover: #1d4ed8;
+      --danger: #ef4444;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.1);
+      --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1);
+      --shadow-lg: 0 10px 25px -5px rgba(0,0,0,0.1);
+      --radius: 10px;
+    }
+
+    body.dark-theme {
+      --bg-primary: #0f172a;
+      --bg-surface: #1e293b;
+      --bg-sidebar: #1e293b;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --border-color: #334155;
+      --accent: #3b82f6;
+      --accent-hover: #2563eb;
+    }
+
+    body {
+      display: flex;
+      height: 100vh;
+      width: 100vw;
+      overflow: hidden;
+      background-color: var(--bg-primary);
+      color: var(--text-main);
+    }
+
+    #app-container {
+      display: flex;
+      width: 100%;
+      height: 100%;
+      position: relative;
+    }
+
+    /* Sidebar Panel */
+    #sidebar {
+      width: 420px;
+      min-width: 360px;
+      height: 100%;
+      background: var(--bg-sidebar);
+      border-right: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      z-index: 20;
+      box-shadow: 2px 0 10px rgba(0,0,0,0.05);
+    }
+
+    .sidebar-header {
+      padding: 18px 20px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--bg-surface);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-icon {
+      width: 38px;
+      height: 38px;
+      background: var(--accent);
+      color: white;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .brand-title h1 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      line-height: 1.2;
+    }
+
+    .brand-title p {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .stats-bar {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      padding: 12px 20px;
+      background: var(--bg-primary);
+      border-bottom: 1px solid var(--border-color);
+      gap: 8px;
+    }
+
+    .stat-card {
+      background: var(--bg-surface);
+      padding: 8px 12px;
+      border-radius: 6px;
+      border: 1px solid var(--border-color);
+      text-align: center;
+    }
+
+    .stat-value {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    .stat-label {
+      font-size: 0.68rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .controls-panel {
+      padding: 16px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .search-box {
+      position: relative;
+    }
+
+    .search-box i {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-muted);
+      width: 18px;
+      height: 18px;
+    }
+
+    .search-input {
+      width: 100%;
+      padding: 10px 12px 10px 38px;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      background: var(--bg-primary);
+      color: var(--text-main);
+      font-size: 0.88rem;
+      outline: none;
+    }
+
+    .search-input:focus {
+      border-color: var(--accent);
+    }
+
+    .action-bar {
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 9px 16px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: white;
+      flex: 1;
+    }
+
+    .btn-primary:hover {
+      background: var(--accent-hover);
+    }
+
+    .btn-secondary {
+      background: var(--bg-primary);
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+    }
+
+    .btn-secondary:hover {
+      background: var(--border-color);
+    }
+
+    .btn-icon-only {
+      padding: 9px;
+      border-radius: 8px;
+      background: var(--bg-primary);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      cursor: pointer;
+    }
+
+    .btn-login {
+      background: #10b981;
+      color: white;
+      padding: 6px 12px;
+      font-size: 0.78rem;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-weight: 600;
+    }
+
+    .btn-login:hover {
+      background: #059669;
+    }
+
+    .btn-logout {
+      background: var(--danger);
+      color: white;
+      padding: 6px 12px;
+      font-size: 0.78rem;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-weight: 600;
+    }
+
+    /* Client List */
+    .client-list-container {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .client-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+      position: relative;
+    }
+
+    .client-card:hover {
+      border-color: var(--accent);
+      box-shadow: var(--shadow-sm);
+      transform: translateY(-1px);
+    }
+
+    .client-card.active {
+      border-color: var(--accent);
+      background: rgba(37, 99, 235, 0.04);
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 6px;
+    }
+
+    .client-name {
+      font-weight: 600;
+      font-size: 0.95rem;
+      color: var(--text-main);
+    }
+
+    .client-role {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    .client-detail {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 4px;
+    }
+
+    .client-detail i {
+      width: 14px;
+      height: 14px;
+      flex-shrink: 0;
+    }
+
+    .card-actions {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      display: flex;
+      gap: 4px;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    .client-card:hover .card-actions {
+      opacity: 1;
+    }
+
+    .btn-sm-icon {
+      padding: 4px;
+      background: var(--bg-primary);
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      color: var(--text-muted);
+      cursor: pointer;
+    }
+
+    .btn-sm-icon:hover {
+      color: var(--accent);
+    }
+
+    .btn-sm-icon.delete:hover {
+      color: var(--danger);
+    }
+
+    /* Map Area */
+    #map-container {
+      flex: 1;
+      height: 100%;
+      position: relative;
+    }
+
+    #map {
+      width: 100%;
+      height: 100%;
+      background: #e5e7eb;
+    }
+
+    /* Map Address Search Bar Overlay */
+    .map-search-bar {
+      position: absolute;
+      top: 14px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 500;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--bg-surface);
+      padding: 6px 12px;
+      border-radius: 30px;
+      box-shadow: var(--shadow-lg);
+      border: 1px solid var(--border-color);
+      width: 90%;
+      max-width: 520px;
+    }
+
+    .map-search-bar input {
+      flex: 1;
+      border: none;
+      background: transparent;
+      outline: none;
+      font-size: 0.88rem;
+      color: var(--text-main);
+      padding: 6px 4px;
+    }
+
+    .map-search-bar button {
+      background: var(--accent);
+      color: white;
+      border: none;
+      padding: 7px 14px;
+      border-radius: 20px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: background 0.2s;
+    }
+
+    .map-search-bar button:hover {
+      background: var(--accent-hover);
+    }
+
+    /* Building Details Slide Panel */
+    #building-panel {
+      position: absolute;
+      top: 70px;
+      right: 16px;
+      width: 360px;
+      max-height: calc(100% - 90px);
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      box-shadow: var(--shadow-lg);
+      z-index: 600;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      transform: translateX(420px);
+      transition: transform 0.3s ease;
+    }
+
+    #building-panel.open {
+      transform: translateX(0);
+    }
+
+    .building-panel-header {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--bg-surface);
+    }
+
+    .building-panel-header h3 {
+      font-size: 1rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .building-info-body {
+      padding: 16px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .info-row {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .info-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .info-val {
+      font-size: 0.88rem;
+      font-weight: 500;
+      color: var(--text-main);
+    }
+
+    .badge-type {
+      display: inline-block;
+      align-self: flex-start;
+      padding: 3px 8px;
+      border-radius: 4px;
+      background: rgba(37, 99, 235, 0.1);
+      color: var(--accent);
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: capitalize;
+    }
+
+    /* Modals */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(15, 23, 42, 0.5);
+      backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s;
+    }
+
+    .modal-overlay.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal {
+      background: var(--bg-surface);
+      width: 100%;
+      max-width: 540px;
+      border-radius: 12px;
+      box-shadow: var(--shadow-lg);
+      border: 1px solid var(--border-color);
+      overflow: hidden;
+      max-height: 90vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .modal-sm {
+      max-width: 380px;
+    }
+
+    .modal-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal-header h2 {
+      font-size: 1.1rem;
+      font-weight: 600;
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+    }
+
+    .modal-body {
+      padding: 20px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .form-group.full {
+      grid-column: span 2;
+    }
+
+    .form-group label {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+
+    .form-group input, .form-group select {
+      padding: 9px 12px;
+      border-radius: 6px;
+      border: 1px solid var(--border-color);
+      background: var(--bg-primary);
+      color: var(--text-main);
+      font-size: 0.88rem;
+      outline: none;
+    }
+
+    .form-group input:focus, .form-group select:focus {
+      border-color: var(--accent);
+    }
+
+    .modal-footer {
+      padding: 16px 20px;
+      border-top: 1px solid var(--border-color);
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      background: var(--bg-primary);
+    }
+
+    .leaflet-popup-content-wrapper {
+      background: var(--bg-surface);
+      color: var(--text-main);
+      border-radius: 8px;
+      box-shadow: var(--shadow-lg);
+      padding: 0;
+      overflow: hidden;
+    }
+
+    .leaflet-popup-content {
+      margin: 0;
+      padding: 14px 16px;
+      font-size: 0.85rem;
+      line-height: 1.4;
+    }
+
+    .popup-title {
+      font-weight: 700;
+      font-size: 0.95rem;
+      margin-bottom: 2px;
+    }
+
+    .popup-sub {
+      color: var(--text-muted);
+      font-size: 0.78rem;
+      margin-bottom: 8px;
+    }
+
+    .popup-info {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin-bottom: 10px;
+    }
+
+    .popup-info div {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.78rem;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      background: rgba(37, 99, 235, 0.1);
+      color: var(--accent);
+    }
+
+    .map-btn-overlay {
+      position: absolute;
+      top: 14px;
+      left: 60px;
+      z-index: 500;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 6px 12px;
+      box-shadow: var(--shadow-md);
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .geocoding-spinner {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-radius: 50%;
+      border-top-color: white;
+      animation: spin 0.8s linear infinite;
+    }
+
+    .admin-only {
+      display: none !important;
+    }
+
+    body.is-admin .admin-only {
+      display: flex !important;
+    }
+
+    .login-error {
+      color: var(--danger);
+      font-size: 0.8rem;
+      display: none;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+
+<div id="app-container">
+  <!-- Sidebar Panel -->
+  <div id="sidebar">
+    <div class="sidebar-header">
+      <div class="brand">
+        <div class="brand-icon">
+          <i data-lucide="map-pin"></i>
+        </div>
+        <div class="brand-title">
+          <h1>US Client Locator</h1>
+          <p>Interactive Map & Building Inspector</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button class="btn-login" id="btn-show-login"><i data-lucide="lock" style="width:14px"></i> Admin</button>
+        <button class="btn-logout admin-only" id="btn-logout"><i data-lucide="log-out" style="width:14px"></i> Exit</button>
+        <button class="btn-icon-only" id="theme-toggle" title="Toggle Theme">
+          <i data-lucide="moon"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Quick Stats Bar -->
+    <div class="stats-bar">
+      <div class="stat-card">
+        <div class="stat-value" id="stat-total">0</div>
+        <div class="stat-label">Clients</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="stat-states">0</div>
+        <div class="stat-label">US States</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="stat-companies">0</div>
+        <div class="stat-label">Companies</div>
+      </div>
+    </div>
+
+    <!-- Search and Controls (Clients List) -->
+    <div class="controls-panel">
+      <div class="search-box">
+        <i data-lucide="users"></i>
+        <input type="text" id="search-input" class="search-input" placeholder="Search in client database...">
+      </div>
+
+      <div class="action-bar admin-only">
+        <button class="btn btn-primary" id="btn-add-client">
+          <i data-lucide="user-plus"></i> Add Client
+        </button>
+        <button class="btn btn-secondary" id="btn-export" title="Export Data">
+          <i data-lucide="download"></i>
+        </button>
+        <button class="btn btn-secondary" id="btn-import-trigger" title="Import Data">
+          <i data-lucide="upload"></i>
+        </button>
+        <input type="file" id="file-import" accept=".json,.csv" style="display: none;">
+      </div>
+    </div>
+
+    <!-- Client Directory List -->
+    <div class="client-list-container" id="client-list">
+      <!-- Cards rendered via JS -->
+    </div>
+  </div>
+
+  <!-- Map Container -->
+  <div id="map-container">
+    <!-- Top Address/ZIP Map Search Bar -->
+    <div class="map-search-bar">
+      <i data-lucide="search" style="width: 18px; height: 18px; color: var(--text-muted); flex-shrink: 0;"></i>
+      <input type="text" id="map-address-search" placeholder="Paste full address, ZIP, or city...">
+      <button id="btn-map-search"><i data-lucide="navigation" style="width: 14px; height: 14px;"></i> Search</button>
+    </div>
+
+    <button class="map-btn-overlay" id="btn-recenter">
+      <i data-lucide="compass"></i> Recenter US
+    </button>
+    <div id="map"></div>
+
+    <!-- Building Details Slide-Over Panel -->
+    <div id="building-panel">
+      <div class="building-panel-header">
+        <h3><i data-lucide="building-2"></i> Building Inspector</h3>
+        <button class="modal-close" id="btn-close-building-header" title="Close Panel"><i data-lucide="x"></i></button>
+      </div>
+
+      <div class="building-info-body">
+        <span class="badge-type" id="bld-type">Commercial / Residential</span>
+
+        <div class="info-row">
+          <span class="info-label">Name / Title</span>
+          <span class="info-val" id="bld-name">Empire State Building</span>
+        </div>
+
+        <div class="info-row">
+          <span class="info-label">Street Address</span>
+          <span class="info-val" id="bld-address">350 5th Ave</span>
+        </div>
+
+        <div class="info-row">
+          <span class="info-label">City, State & ZIP</span>
+          <span class="info-val" id="bld-city-zip">New York, NY 10118</span>
+        </div>
+
+        <div class="info-row">
+          <span class="info-label">County & Country</span>
+          <span class="info-val" id="bld-county">New York County, United States</span>
+        </div>
+
+        <div class="info-row">
+          <span class="info-label">Geographic Coordinates</span>
+          <span class="info-val" id="bld-coords">40.7484, -73.9857</span>
+        </div>
+
+        <button class="btn btn-primary admin-only" id="btn-add-client-here" style="margin-top: 10px;">
+          <i data-lucide="plus-circle"></i> Add Client at this Address
+        </button>
+        <button class="btn btn-secondary" id="btn-close-building-body" style="margin-top: 4px;">
+          <i data-lucide="x"></i> Close Panel
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Admin Login Modal -->
+<div class="modal-overlay" id="modal-login">
+  <div class="modal modal-sm">
+    <div class="modal-header">
+      <h2>Admin Authentication</h2>
+      <button class="modal-close" id="modal-login-close"><i data-lucide="x"></i></button>
+    </div>
+    <form id="form-login">
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Username</label>
+          <input type="text" id="login-username" required placeholder="admin">
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="login-password" required placeholder="••••••••">
+        </div>
+        <div class="login-error" id="login-error">Invalid username or password.</div>
+      </div>
+      <div class="modal-footer">
+        <button type="submit" class="btn btn-primary">Login</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Add/Edit Client Modal -->
+<div class="modal-overlay" id="modal-client">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modal-title">Add New Client</h2>
+      <button class="modal-close" id="modal-close"><i data-lucide="x"></i></button>
+    </div>
+    <form id="form-client">
+      <div class="modal-body">
+        <input type="hidden" id="client-id">
+        
+        <div class="form-row">
+          <div class="form-group">
+            <label>First Name *</label>
+            <input type="text" id="firstName" required placeholder="John">
+          </div>
+          <div class="form-group">
+            <label>Last Name *</label>
+            <input type="text" id="lastName" required placeholder="Doe">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Company *</label>
+            <input type="text" id="company" required placeholder="Acme Corp">
+          </div>
+          <div class="form-group">
+            <label>Job Title</label>
+            <input type="text" id="jobTitle" placeholder="Manager">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Phone Number *</label>
+            <input type="tel" id="phone" required placeholder="+1 (555) 000-0000" maxlength="17">
+          </div>
+          <div class="form-group">
+            <label>Email *</label>
+            <input type="email" id="email" required placeholder="john@example.com">
+          </div>
+        </div>
+
+        <div class="form-group full">
+          <label>Street Address *</label>
+          <input type="text" id="address" required placeholder="123 Main St, Suite 100">
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>City *</label>
+            <input type="text" id="city" required placeholder="New York">
+          </div>
+          <div class="form-group">
+            <label>State (US) *</label>
+            <select id="state" required>
+              <option value="">Select State</option>
+              <option value="AL">Alabama (AL)</option><option value="AK">Alaska (AK)</option>
+              <option value="AZ">Arizona (AZ)</option><option value="AR">Arkansas (AR)</option>
+              <option value="CA">California (CA)</option><option value="CO">Colorado (CO)</option>
+              <option value="CT">Connecticut (CT)</option><option value="DE">Delaware (DE)</option>
+              <option value="FL">Florida (FL)</option><option value="GA">Georgia (GA)</option>
+              <option value="HI">Hawaii (HI)</option><option value="ID">Idaho (ID)</option>
+              <option value="IL">Illinois (IL)</option><option value="IN">Indiana (IN)</option>
+              <option value="IA">Iowa (IA)</option><option value="KS">Kansas (KS)</option>
+              <option value="KY">Kentucky (KY)</option><option value="LA">Louisiana (LA)</option>
+              <option value="ME">Maine (ME)</option><option value="MD">Maryland (MD)</option>
+              <option value="MA">Massachusetts (MA)</option><option value="MI">Michigan (MI)</option>
+              <option value="MN">Minnesota (MN)</option><option value="MS">Mississippi (MS)</option>
+              <option value="MO">Missouri (MO)</option><option value="MT">Montana (MT)</option>
+              <option value="NE">Nebraska (NE)</option><option value="NV">Nevada (NV)</option>
+              <option value="NH">New Hampshire (NH)</option><option value="NJ">New Jersey (NJ)</option>
+              <option value="NM">New Mexico (NM)</option><option value="NY">New York (NY)</option>
+              <option value="NC">North Carolina (NC)</option><option value="ND">North Dakota (ND)</option>
+              <option value="OH">Ohio (OH)</option><option value="OK">Oklahoma (OK)</option>
+              <option value="OR">Oregon (OR)</option><option value="PA">Pennsylvania (PA)</option>
+              <option value="RI">Rhode Island (RI)</option><option value="SC">South Carolina (SC)</option>
+              <option value="SD">South Dakota (SD)</option><option value="TN">Tennessee (TN)</option>
+              <option value="TX">Texas (TX)</option><option value="UT">Utah (UT)</option>
+              <option value="VT">Vermont (VT)</option><option value="VA">Virginia (VA)</option>
+              <option value="WA">Washington (WA)</option><option value="WV">West Virginia (WV)</option>
+              <option value="WI">Wisconsin (WI)</option><option value="WY">Wyoming (WY)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>ZIP Code *</label>
+            <input type="text" id="zipCode" required placeholder="10001">
+          </div>
+          <div class="form-group">
+            <label>Client Status</label>
+            <select id="status">
+              <option value="Active">Active</option>
+              <option value="Lead">Lead</option>
+              <option value="Inactive">Inactive</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" id="btn-cancel">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="btn-save-client">
+          <span id="save-btn-text">Save & Locate on Map</span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+
+<script>
+  // --- Supabase Cloud Configuration ---
+  const SUPABASE_URL = 'https://lcsnslbwbpqsaztvkisd.supabase.co';
+  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxjc25zbGJ3YnBxc2F6dHZraXNkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI2MjYxOTYsImV4cCI6MjEwODIwMjE5Nn0.ocDAP84M8kf3mmGfIV40KUtdCM2FkseC8aiBSLE9Np8';
+  
+  const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  let clients = [];
+  let isAdmin = sessionStorage.getItem('is_admin_logged') === 'true';
+
+  let map = null;
+  let markersMap = new Map();
+  let selectedClientId = null;
+  let currentClickedBuilding = null;
+  let tempClickMarker = null;
+
+  document.addEventListener("DOMContentLoaded", async () => {
+    checkAdminState();
+    initMap();
+    initIcons();
+    await loadClientsFromSupabase();
+    setupEventListeners();
+  });
+
+  function checkAdminState() {
+    if (isAdmin) {
+      document.body.classList.add('is-admin');
+      document.getElementById('btn-show-login').style.display = 'none';
+    } else {
+      document.body.classList.remove('is-admin');
+      document.getElementById('btn-show-login').style.display = 'flex';
+    }
+  }
+
+  function initIcons() {
+    lucide.createIcons();
+  }
+
+  function initMap() {
+    const usCenter = [39.8283, -98.5795];
+    
+    map = L.map('map', {
+      zoomControl: true,
+      minZoom: 2,
+      maxZoom: 19
+    }).setView(usCenter, 4);
+
+    const esriStreets = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+      attribution: 'Tiles &copy; Esri',
+      maxZoom: 19
+    });
+
+    const esriSatellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+      attribution: 'Tiles &copy; Esri World Imagery',
+      maxZoom: 19
+    });
+
+    const esriTransportation = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 });
+    const esriLabels = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 });
+
+    const hybridLayer = L.layerGroup([
+      L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 }),
+      esriTransportation,
+      esriLabels
+    ]);
+
+    esriStreets.addTo(map);
+
+    const baseMaps = {
+      "Street Map": esriStreets,
+      "Satellite View": esriSatellite,
+      "Hybrid View (Satellite + Roads)": hybridLayer
+    };
+    
+    L.control.layers(baseMaps).addTo(map);
+
+    map.on('click', async (e) => {
+      const { lat, lng } = e.latlng;
+      await fetchBuildingDetails(lat, lng);
+    });
+  }
+
+  async function loadClientsFromSupabase() {
+    try {
+      const { data, error } = await supabaseClient
+        .from('clients')
+        .select('*');
+
+      if (error) {
+        console.error('Error loading clients from Supabase:', error);
+        return;
+      }
+
+      if (data) {
+        clients = data.map(item => ({
+          id: String(item.id),
+          firstName: item.first_name,
+          lastName: item.last_name,
+          company: item.company,
+          jobTitle: item.job_title,
+          phone: item.phone,
+          email: item.email,
+          address: item.address,
+          city: item.city,
+          state: item.state,
+          zipCode: item.zip_code,
+          status: item.status,
+          lat: item.lat,
+          lng: item.lng
+        }));
+
+        renderMarkers();
+        renderClients();
+        updateStats();
+      }
+    } catch (err) {
+      console.error('Failed to connect to Supabase:', err);
+    }
+  }
+
+  function closeBuildingPanel() {
+    document.getElementById('building-panel').classList.remove('open');
+    if (tempClickMarker) {
+      map.removeLayer(tempClickMarker);
+      tempClickMarker = null;
+    }
+  }
+
+  function toEnglishLetters(str) {
+    if (!str) return '';
+    const ruEn = {
+      'А':'A','а':'a','Б':'B','б':'b','В':'V','в':'v','Г':'G','г':'g','Д':'D','д':'d',
+      'Е':'E','е':'e','Ё':'Yo','ё':'yo','Ж':'Zh','ж':'zh','З':'Z','з':'z','И':'I','и':'i',
+      'Й':'Y','й':'y','К':'K','к':'k','Л':'L','л':'l','М':'M','м':'m','Н':'N','н':'n',
+      'О':'O','о':'o','П':'P','п':'p','Р':'R','р':'r','С':'S','с':'s','Т':'T','т':'t',
+      'У':'U','у':'u','Ф':'F','ф':'f','Х':'Kh','х':'kh','Ц':'Ts','ц':'ts','Ч':'Ch','ч':'ch',
+      'Ш':'Sh','ш':'sh','Щ':'Sch','щ':'sch','Ъ':'','ъ':'','Ы':'Y','ы':'y','Ь':'','ь':'',
+      'Э':'E','э':'e','Ю':'Yu','ю':'yu','Я':'Ya','я':'ya'
+    };
+    return str.split('').map(char => ruEn[char] || char).join('');
+  }
+
+  async function fetchBuildingDetails(lat, lng) {
+    if (tempClickMarker) {
+      map.removeLayer(tempClickMarker);
+    }
+
+    tempClickMarker = L.marker([lat, lng], {
+      icon: L.divIcon({
+        className: 'temp-building-pin',
+        html: `<div style="background:#ef4444; width:16px; height:16px; border-radius:50%; border:3px solid white; box-shadow:0 0 10px rgba(0,0,0,0.5);"></div>`,
+        iconSize: [16, 16],
+        iconAnchor: [8, 8]
+      })
+    }).addTo(map);
+
+    const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1&accept-language=en-US,en`;
+
+    try {
+      const res = await fetch(url, {
+        headers: { 'Accept-Language': 'en-US,en;q=0.9' }
+      });
+      const data = await res.json();
+
+      if (data && data.address) {
+        const addr = data.address;
+        
+        let bldName = data.namedetails?.name || data.display_name.split(',')[0] || 'Unidentified Building';
+        bldName = toEnglishLetters(bldName);
+
+        const houseNum = addr.house_number || '';
+        let road = addr.road || addr.pedestrian || addr.street || 'Address Unknown';
+        road = toEnglishLetters(road);
+
+        const streetAddr = houseNum ? `${houseNum} ${road}` : road;
+
+        let rawCity = addr.city || addr.town || addr.village || addr.suburb || 'Unknown City';
+        rawCity = toEnglishLetters(rawCity);
+
+        let rawState = addr.state || '';
+        rawState = toEnglishLetters(rawState);
+        const stateAbbr = convertStateToAbbr(rawState);
+
+        const zip = addr.postcode || '';
+
+        let rawCounty = addr.county || 'US Territory';
+        rawCounty = toEnglishLetters(rawCounty);
+
+        const country = 'United States';
+        const type = data.type || data.category || 'Structure';
+
+        currentClickedBuilding = {
+          name: bldName,
+          address: streetAddr,
+          city: rawCity,
+          state: stateAbbr,
+          zipCode: zip,
+          lat: lat,
+          lng: lng
+        };
+
+        document.getElementById('bld-name').innerText = bldName;
+        document.getElementById('bld-address').innerText = streetAddr;
+        document.getElementById('bld-city-zip').innerText = `${rawCity}, ${stateAbbr} ${zip}`.trim();
+        document.getElementById('bld-county').innerText = `${rawCounty}, ${country}`;
+        document.getElementById('bld-type').innerText = type;
+        document.getElementById('bld-coords').innerText = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+
+        document.getElementById('building-panel').classList.add('open');
+      }
+    } catch (err) {
+      console.error('Building lookup failed:', err);
+    }
+  }
+
+  function cleanSearchQuery(rawInput) {
+    if (!rawInput) return '';
+    let cleaned = rawInput;
+    const phrasesToRemove = [
+      /street\s*address/gi,
+      /city,\s*state\s*&\s*zip/gi,
+      /city/gi,
+      /state/gi,
+      /zip\s*code/gi,
+      /county\s*&\s*country/gi,
+      /name\s*\/\s*title/gi,
+      /geographic\s*coordinates/gi
+    ];
+
+    phrasesToRemove.forEach(regex => {
+      cleaned = cleaned.replace(regex, ' ');
+    });
+
+    cleaned = cleaned.replace(/[\r\n]+/g, ', ');
+    cleaned = cleaned.replace(/\s+/g, ' ');
+    return cleaned.trim();
+  }
+
+  async function searchMapLocation() {
+    const rawInput = document.getElementById('map-address-search').value;
+    const query = cleanSearchQuery(rawInput);
+    if (!query) return;
+
+    const btn = document.getElementById('btn-map-search');
+    btn.disabled = true;
+    btn.innerHTML = `<span class="geocoding-spinner"></span>`;
+
+    const searchUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query + ', USA')}&limit=1&accept-language=en-US,en`;
+
+    try {
+      const res = await fetch(searchUrl, {
+        headers: { 'Accept-Language': 'en-US,en;q=0.9' }
+      });
+      const data = await res.json();
+
+      if (data && data.length > 0) {
+        const lat = parseFloat(data[0].lat);
+        const lng = parseFloat(data[0].lon);
+
+        map.flyTo([lat, lng], 17, { duration: 1.5 });
+        await fetchBuildingDetails(lat, lng);
+      } else {
+        alert('Location or address not found in the United States.');
+      }
+    } catch (err) {
+      alert('Error searching for address.');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = `<i data-lucide="navigation" style="width: 14px; height: 14px;"></i> Search`;
+      initIcons();
+    }
+  }
+
+  function convertStateToAbbr(stateName) {
+    const statesMap = {
+      "Alabama":"AL","Alaska":"AK","Arizona":"AZ","Arkansas":"AR","California":"CA",
+      "Colorado":"CO","Connecticut":"CT","Delaware":"DE","Florida":"FL","Georgia":"GA",
+      "Hawaii":"HI","Idaho":"ID","Illinois":"IL","Indiana":"IN","Iowa":"IA","Kansas":"KS",
+      "Kentucky":"KY","Louisiana":"LA","Maine":"ME","Maryland":"MD","Massachusetts":"MA",
+      "Michigan":"MI","Minnesota":"MN","Mississippi":"MS","Missouri":"MO","Montana":"MT",
+      "Nebraska":"NE","Nevada":"NV","New Hampshire":"NH","New Jersey":"NJ","New Mexico":"NM",
+      "New York":"NY","North Carolina":"NC","North Dakota":"ND","Ohio":"OH","Oklahoma":"OK",
+      "Oregon":"OR","Pennsylvania":"PA","Rhode Island":"RI","South Carolina":"SC",
+      "South Dakota":"SD","Tennessee":"TN","Texas":"TX","Utah":"UT","Vermont":"VT",
+      "Virginia":"VA","Washington":"WA","West Virginia":"WV","Wisconsin":"WI","Wyoming":"WY"
+    };
+    return statesMap[stateName] || stateName;
+  }
+
+  function renderMarkers() {
+    markersMap.forEach(marker => map.removeLayer(marker));
+    markersMap.clear();
+
+    clients.forEach(client => {
+      if (client.lat && client.lng) {
+        const customIcon = L.divIcon({
+          className: 'custom-map-pin',
+          html: `
+            <div style="
+              background-color: ${client.status === 'Active' ? '#2563eb' : client.status === 'Lead' ? '#f59e0b' : '#64748b'};
+              width: 32px;
+              height: 32px;
+              border-radius: 50%;
+              border: 3px solid white;
+              box-shadow: 0 4px 8px rgba(0,0,0,0.25);
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              color: white;
+              font-weight: 700;
+              font-size: 11px;
+            ">
+              ${client.firstName[0]}${client.lastName[0]}
+            </div>
+          `,
+          iconSize: [32, 32],
+          iconAnchor: [16, 16]
+        });
+
+        const marker = L.marker([client.lat, client.lng], { icon: customIcon }).addTo(map);
+
+        const adminButtons = isAdmin ? `
+          <div style="display:flex; gap:6px; margin-top:8px;">
+            <button onclick="editClient('${client.id}')" style="background:#2563eb; color:white; border:none; padding:4px 8px; border-radius:4px; font-size:11px; cursor:pointer;">Edit</button>
+            <button onclick="deleteClient('${client.id}')" style="background:#ef4444; color:white; border:none; padding:4px 8px; border-radius:4px; font-size:11px; cursor:pointer;">Delete</button>
+          </div>
+        ` : '';
+
+        const popupContent = `
+          <div class="popup-title">${client.firstName} ${client.lastName}</div>
+          <div class="popup-sub">${client.jobTitle || 'Representative'} at <strong>${client.company}</strong></div>
+          <div class="popup-info">
+            <div><i data-lucide="map-pin" style="width:12px"></i> ${client.address}, ${client.city}, ${client.state} ${client.zipCode}</div>
+            <div><i data-lucide="phone" style="width:12px"></i> ${client.phone}</div>
+            <div><i data-lucide="mail" style="width:12px"></i> ${client.email}</div>
+          </div>
+          ${adminButtons}
+        `;
+
+        marker.bindPopup(popupContent);
+        marker.on('click', () => {
+          highlightClientCard(client.id);
+        });
+
+        markersMap.set(client.id, marker);
+      }
+    });
+  }
+
+  function renderClients() {
+    const listEl = document.getElementById('client-list');
+    const searchVal = document.getElementById('search-input').value.toLowerCase().trim();
+
+    const filtered = clients.filter(c => {
+      const full = `${c.firstName} ${c.lastName} ${c.company} ${c.city} ${c.state} ${c.zipCode}`.toLowerCase();
+      return full.includes(searchVal);
+    });
+
+    listEl.innerHTML = '';
+
+    if (filtered.length === 0) {
+      listEl.innerHTML = `
+        <div style="text-align:center; padding:40px 20px; color:var(--text-muted); font-size:0.85rem;">
+          No clients found matching your query.
+        </div>
+      `;
+      return;
+    }
+
+    filtered.forEach(client => {
+      const card = document.createElement('div');
+      card.className = `client-card ${selectedClientId === client.id ? 'active' : ''}`;
+      card.dataset.id = client.id;
+
+      const adminCardActions = isAdmin ? `
+        <div class="card-actions">
+          <button class="btn-sm-icon" onclick="event.stopPropagation(); editClient('${client.id}')"><i data-lucide="edit-3"></i></button>
+          <button class="btn-sm-icon delete" onclick="event.stopPropagation(); deleteClient('${client.id}')"><i data-lucide="trash-2"></i></button>
+        </div>
+      ` : '';
+
+      card.innerHTML = `
+        <div class="card-header">
+          <div class="client-name">${client.firstName} ${client.lastName}</div>
+          <span class="badge">${client.state}</span>
+        </div>
+        <div class="client-role">${client.jobTitle || 'Contact'} • ${client.company}</div>
+        <div class="client-detail"><i data-lucide="map-pin"></i> ${client.address}, ${client.city}, ${client.zipCode}</div>
+        <div class="client-detail"><i data-lucide="phone"></i> ${client.phone}</div>
+        <div class="client-detail"><i data-lucide="mail"></i> ${client.email}</div>
+        ${adminCardActions}
+      `;
+
+      card.addEventListener('click', () => {
+        focusClientOnMap(client);
+      });
+
+      listEl.appendChild(card);
+    });
+
+    initIcons();
+  }
+
+  function focusClientOnMap(client) {
+    selectedClientId = client.id;
+    highlightClientCard(client.id);
+
+    if (client.lat && client.lng) {
+      map.flyTo([client.lat, client.lng], 17, { duration: 1.2 });
+      const marker = markersMap.get(client.id);
+      if (marker) {
+        setTimeout(() => marker.openPopup(), 1200);
+      }
+    }
+  }
+
+  function highlightClientCard(id) {
+    document.querySelectorAll('.client-card').forEach(card => {
+      if (card.dataset.id === id) {
+        card.classList.add('active');
+        card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      } else {
+        card.classList.remove('active');
+      }
+    });
+  }
+
+  function updateStats() {
+    document.getElementById('stat-total').innerText = clients.length;
+    const states = new Set(clients.map(c => c.state));
+    document.getElementById('stat-states').innerText = states.size;
+    const companies = new Set(clients.map(c => c.company));
+    document.getElementById('stat-companies').innerText = companies.size;
+  }
+
+  async function geocodeAddress(address, city, state, zip) {
+    const query = `${address}, ${city}, ${state} ${zip}, USA`;
+    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1&accept-language=en-US,en`;
+
+    try {
+      const res = await fetch(url, {
+        headers: { 'Accept-Language': 'en-US,en;q=0.9' }
+      });
+      const data = await res.json();
+      if (data && data.length > 0) {
+        return {
+          lat: parseFloat(data[0].lat),
+          lng: parseFloat(data[0].lon)
+        };
+      }
+    } catch (err) {
+      console.warn('Geocoding search error:', err);
+    }
+    return { lat: 39.8283, lng: -98.5795 };
+  }
+
+  // --- Phone Number Auto-Formatter for US Format (+1 (555) 000-0000) ---
+  function formatUSPhone(value) {
+    const numbers = value.replace(/\D/g, '');
+    const cleanNum = numbers.startsWith('1') ? numbers.slice(1) : numbers;
+    const sliced = cleanNum.slice(0, 10);
+    
+    let result = '+1';
+    if (sliced.length > 0) {
+      result += ' (' + sliced.substring(0, 3);
+    }
+    if (sliced.length >= 3) {
+      result += ') ' + sliced.substring(3, 6);
+    }
+    if (sliced.length >= 6) {
+      result += '-' + sliced.substring(6, 10);
+    }
+    return result;
+  }
+
+  function setupEventListeners() {
+    document.getElementById('search-input').addEventListener('input', renderClients);
+
+    document.getElementById('btn-map-search').addEventListener('click', searchMapLocation);
+    document.getElementById('map-address-search').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        searchMapLocation();
+      }
+    });
+
+    const phoneInput = document.getElementById('phone');
+    phoneInput.addEventListener('input', (e) => {
+      phoneInput.value = formatUSPhone(phoneInput.value);
+    });
+
+    const modalLogin = document.getElementById('modal-login');
+    document.getElementById('btn-show-login').addEventListener('click', () => {
+      document.getElementById('login-error').style.display = 'none';
+      modalLogin.classList.add('open');
+    });
+
+    document.getElementById('modal-login-close').addEventListener('click', () => {
+      modalLogin.classList.remove('open');
+    });
+
+    // --- Admin Login Check against Supabase Database ---
+    document.getElementById('form-login').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const user = document.getElementById('login-username').value.trim();
+      const pass = document.getElementById('login-password').value.trim();
+
+      const { data, error } = await supabaseClient
+        .from('admins')
+        .select('*')
+        .eq('username', user)
+        .eq('password', pass)
+        .maybeSingle();
+
+      if (data && !error) {
+        isAdmin = true;
+        sessionStorage.setItem('is_admin_logged', 'true');
+        checkAdminState();
+        renderClients();
+        renderMarkers();
+        modalLogin.classList.remove('open');
+        document.getElementById('form-login').reset();
+      } else {
+        document.getElementById('login-error').style.display = 'block';
+      }
+    });
+
+    document.getElementById('btn-logout').addEventListener('click', () => {
+      isAdmin = false;
+      sessionStorage.removeItem('is_admin_logged');
+      checkAdminState();
+      renderClients();
+      renderMarkers();
+    });
+
+    const modal = document.getElementById('modal-client');
+    const btnAdd = document.getElementById('btn-add-client');
+    const btnClose = document.getElementById('modal-close');
+    const btnCancel = document.getElementById('btn-cancel');
+
+    if (btnAdd) btnAdd.addEventListener('click', () => openModal());
+    btnClose.addEventListener('click', closeModal);
+    btnCancel.addEventListener('click', closeModal);
+
+    document.getElementById('btn-close-building-header').addEventListener('click', closeBuildingPanel);
+    document.getElementById('btn-close-building-body').addEventListener('click', closeBuildingPanel);
+
+    document.getElementById('btn-add-client-here').addEventListener('click', () => {
+      if (currentClickedBuilding && isAdmin) {
+        openModal();
+        document.getElementById('address').value = currentClickedBuilding.address || '';
+        document.getElementById('city').value = currentClickedBuilding.city || '';
+        document.getElementById('state').value = currentClickedBuilding.state || '';
+        document.getElementById('zipCode').value = currentClickedBuilding.zipCode || '';
+        closeBuildingPanel();
+      }
+    });
+
+    document.getElementById('form-client').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!isAdmin) return;
+
+      const saveBtn = document.getElementById('btn-save-client');
+      const btnText = document.getElementById('save-btn-text');
+      saveBtn.disabled = true;
+      btnText.innerHTML = `<span class="geocoding-spinner"></span> Saving to Cloud...`;
+
+      const idVal = document.getElementById('client-id').value;
+      const id = idVal ? idVal : Date.now().toString();
+      
+      const firstName = document.getElementById('firstName').value.trim();
+      const lastName = document.getElementById('lastName').value.trim();
+      const company = document.getElementById('company').value.trim();
+      const jobTitle = document.getElementById('jobTitle').value.trim();
+      const phone = document.getElementById('phone').value.trim();
+      const email = document.getElementById('email').value.trim();
+      const address = document.getElementById('address').value.trim();
+      const city = document.getElementById('city').value.trim();
+      const state = document.getElementById('state').value;
+      const zipCode = document.getElementById('zipCode').value.trim();
+      const status = document.getElementById('status').value;
+
+      const coords = await geocodeAddress(address, city, state, zipCode);
+
+      const dbPayload = {
+        id: id,
+        first_name: firstName,
+        last_name: lastName,
+        company: company,
+        job_title: jobTitle,
+        phone: phone,
+        email: email,
+        address: address,
+        city: city,
+        state: state,
+        zip_code: zipCode,
+        status: status,
+        lat: coords.lat,
+        lng: coords.lng
+      };
+
+      const { error } = await supabaseClient
+        .from('clients')
+        .upsert(dbPayload);
+
+      if (error) {
+        alert('Error saving client to Supabase: ' + error.message);
+        saveBtn.disabled = false;
+        btnText.innerText = "Save & Locate on Map";
+        return;
+      }
+
+      await loadClientsFromSupabase();
+
+      saveBtn.disabled = false;
+      btnText.innerText = "Save & Locate on Map";
+      closeModal();
+
+      const savedClient = clients.find(c => c.id === id);
+      if (savedClient) {
+        focusClientOnMap(savedClient);
+      }
+    });
+
+    document.getElementById('theme-toggle').addEventListener('click', () => {
+      document.body.classList.toggle('dark-theme');
+    });
+
+    document.getElementById('btn-recenter').addEventListener('click', () => {
+      map.flyTo([39.8283, -98.5795], 4);
+    });
+
+    document.getElementById('btn-export').addEventListener('click', () => {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(clients, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", "us_clients_backup.json");
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+    });
+
+    document.getElementById('btn-import-trigger').addEventListener('click', () => {
+      if (isAdmin) document.getElementById('file-import').click();
+    });
+
+    document.getElementById('file-import').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file || !isAdmin) return;
+
+      const reader = new FileReader();
+      reader.onload = async (evt) => {
+        try {
+          const imported = JSON.parse(evt.target.result);
+          if (Array.isArray(imported)) {
+            for (const item of imported) {
+              await supabaseClient.from('clients').upsert({
+                id: String(item.id || Date.now()),
+                first_name: item.firstName,
+                last_name: item.lastName,
+                company: item.company,
+                job_title: item.jobTitle,
+                phone: item.phone,
+                email: item.email,
+                address: item.address,
+                city: item.city,
+                state: item.state,
+                zip_code: item.zipCode,
+                status: item.status,
+                lat: item.lat,
+                lng: item.lng
+              });
+            }
+            await loadClientsFromSupabase();
+            alert('Clients imported successfully to Supabase!');
+          }
+        } catch (err) {
+          alert('Invalid JSON file format.');
+        }
+      };
+      reader.readAsText(file);
+    });
+  }
+
+  function openModal(client = null) {
+    if (!isAdmin) return;
+    const modal = document.getElementById('modal-client');
+    const form = document.getElementById('form-client');
+    form.reset();
+
+    if (client) {
+      document.getElementById('modal-title').innerText = 'Edit Client';
+      document.getElementById('client-id').value = client.id;
+      document.getElementById('firstName').value = client.firstName;
+      document.getElementById('lastName').value = client.lastName;
+      document.getElementById('company').value = client.company;
+      document.getElementById('jobTitle').value = client.jobTitle || '';
+      document.getElementById('phone').value = client.phone || '+1 ';
+      document.getElementById('email').value, document.getElementById('email').value = client.email;
+      document.getElementById('address').value = client.address;
+      document.getElementById('city').value = client.city;
+      document.getElementById('state').value = client.state;
+      document.getElementById('zipCode').value = client.zipCode;
+      document.getElementById('status').value = client.status || 'Active';
+    } else {
+      document.getElementById('modal-title').innerText = 'Add New Client';
+      document.getElementById('client-id').value = '';
+      document.getElementById('phone').value = '+1 ';
+    }
+
+    modal.classList.add('open');
+  }
+
+  function closeModal() {
+    document.getElementById('modal-client').classList.remove('open');
+  }
+
+  window.editClient = function(id) {
+    if (!isAdmin) return;
+    const client = clients.find(c => c.id === id);
+    if (client) openModal(client);
+  };
+
+  window.deleteClient = function(id) {
+    if (!isAdmin) return;
+    if (confirm("Are you sure you want to delete this client?")) {
+      supabaseClient.from('clients').delete().eq('id', id).then(({ error }) => {
+        if (!error) {
+          loadClientsFromSupabase();
+        } else {
+          alert('Failed to delete: ' + error.message);
+        }
+      });
+    }
+  };
+</script>
+</body>
+</html>
