@@ -491,12 +491,12 @@
       left: 0;
       width: 100%;
       background: #1e293b;
-      padding: 12px 16px;
+      padding: 10px 16px;
       box-shadow: 0 -4px 20px rgba(0,0,0,0.3);
       z-index: 3000;
       display: none;
       flex-direction: column;
-      gap: 8px;
+      gap: 6px;
       border-top: 1px solid var(--border-color);
       user-select: none;
     }
@@ -519,11 +519,11 @@
       color: #f8fafc;
       border: none;
       border-radius: 6px;
-      padding: 12px 0;
-      min-width: 38px;
+      padding: 10px 0;
+      min-width: 36px;
       flex: 1;
       max-width: 56px;
-      font-size: 0.95rem;
+      font-size: 0.92rem;
       font-weight: 600;
       cursor: pointer;
       box-shadow: 0 2px 0 #0f172a;
@@ -539,7 +539,7 @@
     .kb-key.wide {
       flex: 1.8;
       max-width: 95px;
-      font-size: 0.82rem;
+      font-size: 0.8rem;
       background: #475569;
     }
 
@@ -997,12 +997,13 @@
   </div>
 </div>
 
-<!-- Virtual On-Screen Keyboard HTML (4 строки, Close сверху справа) -->
+<!-- Virtual On-Screen Keyboard HTML (5 рядов) -->
 <div id="virtual-keyboard">
   <div class="kb-row" id="kb-row-1"></div>
   <div class="kb-row" id="kb-row-2"></div>
   <div class="kb-row" id="kb-row-3"></div>
   <div class="kb-row" id="kb-row-4"></div>
+  <div class="kb-row" id="kb-row-5"></div>
 </div>
 
 <!-- Admin Login Modal -->
@@ -1193,14 +1194,15 @@
     initVirtualKeyboard();
   });
 
-  // --- Инициализация экранной клавиатуры (Close вверху справа) ---
+  // --- Инициализация экранной клавиатуры (5 рядов) ---
   function initVirtualKeyboard() {
     const kbContainer = document.getElementById('virtual-keyboard');
     const rows = [
       ['1','2','3','4','5','6','7','8','9','0','Backspace','Close'],
       ['q','w','e','r','t','y','u','i','o','p'],
       ['Shift','a','s','d','f','g','h','j','k','l','Enter'],
-      ['z','x','c','v','b','n','m','Space']
+      ['z','x','c','v','b','n','m'],
+      ['Space']
     ];
 
     rows.forEach((row, rIdx) => {
