@@ -176,7 +176,7 @@
 
     .search-input {
       width: 100%;
-      padding: 10px 105px 10px 38px;
+      padding: 10px 48px 10px 38px;
       border-radius: 8px;
       border: 1px solid var(--border-color);
       background: var(--bg-primary);
@@ -189,7 +189,6 @@
       border-color: var(--accent);
     }
 
-    /* Кнопки управления внутри полей ввода */
     .input-actions {
       position: absolute;
       right: 6px;
@@ -213,22 +212,6 @@
 
     .input-action-btn:hover {
       color: var(--accent);
-    }
-
-    .input-action-btn.listening {
-      color: var(--danger);
-      animation: pulse 1s infinite;
-    }
-
-    .input-action-btn.stop-voice-btn {
-      color: #10b981;
-      display: none;
-    }
-
-    @keyframes pulse {
-      0% { opacity: 1; }
-      50% { opacity: 0.4; }
-      100% { opacity: 1; }
     }
 
     .action-bar {
@@ -479,7 +462,7 @@
       outline: none;
       font-size: 0.88rem;
       color: var(--text-main);
-      padding: 6px 105px 6px 4px;
+      padding: 6px 48px 6px 4px;
     }
 
     .map-search-bar button#btn-map-search {
@@ -508,12 +491,12 @@
       left: 0;
       width: 100%;
       background: #1e293b;
-      padding: 12px;
+      padding: 12px 16px;
       box-shadow: 0 -4px 20px rgba(0,0,0,0.3);
       z-index: 3000;
       display: none;
       flex-direction: column;
-      gap: 6px;
+      gap: 8px;
       border-top: 1px solid var(--border-color);
       user-select: none;
     }
@@ -526,6 +509,9 @@
       display: flex;
       justify-content: center;
       gap: 6px;
+      width: 100%;
+      max-width: 900px;
+      margin: 0 auto;
     }
 
     .kb-key {
@@ -533,16 +519,15 @@
       color: #f8fafc;
       border: none;
       border-radius: 6px;
-      padding: 10px 0;
-      min-width: 36px;
+      padding: 12px 0;
+      min-width: 38px;
       flex: 1;
-      max-width: 50px;
-      font-size: 0.9rem;
+      max-width: 56px;
+      font-size: 0.95rem;
       font-weight: 600;
       cursor: pointer;
       box-shadow: 0 2px 0 #0f172a;
       transition: background 0.1s, transform 0.1s;
-      text-transform: capitalize;
     }
 
     .kb-key:active {
@@ -553,15 +538,22 @@
 
     .kb-key.wide {
       flex: 1.8;
-      max-width: 85px;
-      font-size: 0.8rem;
+      max-width: 95px;
+      font-size: 0.82rem;
       background: #475569;
     }
 
     .kb-key.space {
       flex: 6;
-      max-width: 350px;
+      max-width: 450px;
       background: #475569;
+    }
+
+    .kb-key.close-btn {
+      background: #dc2626;
+    }
+    .kb-key.close-btn:active {
+      background: #b91c1c;
     }
 
     .kb-key.active-shift {
@@ -905,12 +897,6 @@
         <i data-lucide="users" class="search-icon"></i>
         <input type="text" id="search-input" class="search-input" placeholder="Search in client database...">
         <div class="input-actions">
-          <button type="button" class="input-action-btn voice-btn" data-target="search-input" title="Voice Search">
-            <i data-lucide="mic" style="width: 16px; height: 16px;"></i>
-          </button>
-          <button type="button" class="input-action-btn stop-voice-btn" data-target="search-input" title="Stop & Search">
-            <i data-lucide="check-circle" style="width: 16px; height: 16px;"></i>
-          </button>
           <button type="button" class="input-action-btn keyboard-btn" data-target="search-input" title="On-Screen Keyboard">
             <i data-lucide="keyboard" style="width: 16px; height: 16px;"></i>
           </button>
@@ -946,12 +932,6 @@
         <i data-lucide="search" class="search-icon"></i>
         <input type="text" id="map-address-search" placeholder="Paste full address, ZIP, or city...">
         <div class="input-actions">
-          <button type="button" class="input-action-btn voice-btn" data-target="map-address-search" title="Voice Search">
-            <i data-lucide="mic" style="width: 16px; height: 16px;"></i>
-          </button>
-          <button type="button" class="input-action-btn stop-voice-btn" data-target="map-address-search" title="Stop & Search">
-            <i data-lucide="check-circle" style="width: 16px; height: 16px;"></i>
-          </button>
           <button type="button" class="input-action-btn keyboard-btn" data-target="map-address-search" title="On-Screen Keyboard">
             <i data-lucide="keyboard" style="width: 16px; height: 16px;"></i>
           </button>
@@ -1017,7 +997,7 @@
   </div>
 </div>
 
-<!-- Virtual On-Screen Keyboard HTML -->
+<!-- Virtual On-Screen Keyboard HTML (4 строки, Close сверху справа) -->
 <div id="virtual-keyboard">
   <div class="kb-row" id="kb-row-1"></div>
   <div class="kb-row" id="kb-row-2"></div>
@@ -1201,8 +1181,7 @@
 
   let pendingClientPayload = null;
   let activeKeyboardInput = null; 
-  let isShiftActive = false;     
-  let activeRecognitions = {}; // Хранилище объектов распознавания речи
+  let isShiftActive = true; // По умолчанию включен Shift для первой буквы
 
   document.addEventListener("DOMContentLoaded", async () => {
     checkAdminState();
@@ -1212,17 +1191,16 @@
     setupRealtimeSubscription();
     setupEventListeners();
     initVirtualKeyboard();
-    initVoiceRecognition();
   });
 
-  // --- Инициализация экранной клавиатуры ---
+  // --- Инициализация экранной клавиатуры (Close вверху справа) ---
   function initVirtualKeyboard() {
     const kbContainer = document.getElementById('virtual-keyboard');
     const rows = [
-      ['1','2','3','4','5','6','7','8','9','0','Backspace'],
+      ['1','2','3','4','5','6','7','8','9','0','Backspace','Close'],
       ['q','w','e','r','t','y','u','i','o','p'],
       ['Shift','a','s','d','f','g','h','j','k','l','Enter'],
-      ['z','x','c','v','b','n','m','Space','Close']
+      ['z','x','c','v','b','n','m','Space']
     ];
 
     rows.forEach((row, rIdx) => {
@@ -1235,13 +1213,13 @@
         let displayLabel = key;
         if (key === 'Backspace') displayLabel = '⌫ Back';
         if (key === 'Space') { displayLabel = 'Space'; btn.classList.add('space'); }
-        if (key === 'Shift') { displayLabel = '⇧ Shift'; btn.classList.add('wide', 'shift-btn'); }
+        if (key === 'Shift') { displayLabel = '⇧ Shift'; btn.classList.add('wide', 'shift-btn', 'active-shift'); }
         if (key === 'Enter') { displayLabel = 'Enter'; btn.classList.add('wide'); }
-        if (key === 'Close') { displayLabel = '✕ Close'; btn.classList.add('wide'); }
+        if (key === 'Close') { displayLabel = '✕ Close'; btn.classList.add('wide', 'close-btn'); }
         
         if (key.length === 1 && /[a-z]/.test(key)) {
           btn.classList.add('letter-key');
-          btn.textContent = key.toUpperCase();
+          btn.textContent = key.toUpperCase(); // Всегда отображаем буквы капслоком на кнопках
         } else {
           btn.textContent = displayLabel;
         }
@@ -1261,13 +1239,39 @@
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
         const targetId = btn.getAttribute('data-target');
-        activeKeyboardInput = document.getElementById(targetId);
-        if (activeKeyboardInput) {
-          activeKeyboardInput.focus();
-          kbContainer.classList.add('open');
+        const targetInput = document.getElementById(targetId);
+
+        // Если клавиатура уже открыта для этого же инпута — закрываем её
+        if (activeKeyboardInput === targetInput && kbContainer.classList.contains('open')) {
+          kbContainer.classList.remove('open');
+          activeKeyboardInput = null;
+        } else {
+          activeKeyboardInput = targetInput;
+          if (activeKeyboardInput) {
+            activeKeyboardInput.focus();
+            updateShiftState(); // Проверяем состояние Shift при открытии
+            kbContainer.classList.add('open');
+          }
         }
       });
     });
+  }
+
+  // Автоматическое определение нужен ли Shift (если строка пустая или после пробела)
+  function updateShiftState() {
+    if (!activeKeyboardInput) return;
+    const val = activeKeyboardInput.value;
+    if (val.length === 0 || val.endsWith(' ')) {
+      isShiftActive = true;
+    } else {
+      isShiftActive = false;
+    }
+
+    const shiftBtn = document.querySelector('.shift-btn');
+    if (shiftBtn) {
+      if (isShiftActive) shiftBtn.classList.add('active-shift');
+      else shiftBtn.classList.remove('active-shift');
+    }
   }
 
   function handleVirtualKeyPress(key) {
@@ -1300,6 +1304,7 @@
         activeKeyboardInput.value = val.substring(0, start - 1) + val.substring(start);
         activeKeyboardInput.selectionStart = activeKeyboardInput.selectionEnd = start - 1;
       }
+      updateShiftState();
     } else if (key === 'Enter') {
       document.getElementById('virtual-keyboard').classList.remove('open');
       if (activeKeyboardInput.id === 'map-address-search') {
@@ -1310,6 +1315,10 @@
     } else if (key === 'Space') {
       activeKeyboardInput.value = val.substring(0, start) + ' ' + val.substring(end);
       activeKeyboardInput.selectionStart = activeKeyboardInput.selectionEnd = start + 1;
+      // После пробела автоматически включаем Shift для первой буквы следующего слова
+      isShiftActive = true;
+      const shiftBtn = document.querySelector('.shift-btn');
+      if (shiftBtn) shiftBtn.classList.add('active-shift');
     } else {
       let charToAdd = key;
       if (/[a-z]/.test(key)) {
@@ -1317,92 +1326,14 @@
       }
       activeKeyboardInput.value = val.substring(0, start) + charToAdd + val.substring(end);
       activeKeyboardInput.selectionStart = activeKeyboardInput.selectionEnd = start + 1;
+
+      // После ввода первой буквы автоматически выключаем Shift для остальных букв слова
+      isShiftActive = false;
+      const shiftBtn = document.querySelector('.shift-btn');
+      if (shiftBtn) shiftBtn.classList.remove('active-shift');
     }
 
     activeKeyboardInput.dispatchEvent(new Event('input', { bubbles: true }));
-  }
-
-  // --- Надежный голосовой поиск (взят из вашего рабочего проекта) с кнопкой остановки ---
-  function initVoiceRecognition() {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-
-    document.querySelectorAll('.voice-btn').forEach(micBtn => {
-      const targetId = micBtn.getAttribute('data-target');
-      const container = micBtn.closest('.search-box');
-      const stopBtn = container.querySelector('.stop-voice-btn');
-      const targetInput = document.getElementById(targetId);
-
-      micBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-
-        if (!SpeechRecognition) {
-          alert("Голосовой ввод не поддерживается вашим браузером.");
-          return;
-        }
-
-        const recognition = new SpeechRecognition();
-        activeRecognitions[targetId] = recognition;
-        
-        recognition.lang = 'en-US';
-        recognition.interimResults = true;
-        recognition.maxAlternatives = 1;
-
-        micBtn.classList.add('listening');
-        if (stopBtn) stopBtn.style.display = 'flex';
-
-        recognition.onresult = (event) => {
-          let interimTranscript = '';
-          let finalTranscript = '';
-
-          for (let i = event.resultIndex; i < event.results.length; ++i) {
-            if (event.results[i].isFinal) {
-              finalTranscript += event.results[i][0].transcript;
-            } else {
-              interimTranscript += event.results[i][0].transcript;
-            }
-          }
-
-          const currentText = finalTranscript || interimTranscript;
-          if (currentText) {
-            targetInput.value = currentText;
-            targetInput.dispatchEvent(new Event('input', { bubbles: true }));
-          }
-        };
-
-        recognition.onerror = () => {
-          micBtn.classList.remove('listening');
-          if (stopBtn) stopBtn.style.display = 'none';
-        };
-
-        recognition.onend = () => {
-          micBtn.classList.remove('listening');
-          if (stopBtn) stopBtn.style.display = 'none';
-        };
-
-        try {
-          recognition.start();
-        } catch (err) {
-          micBtn.classList.remove('listening');
-          if (stopBtn) stopBtn.style.display = 'none';
-        }
-      });
-
-      if (stopBtn) {
-        stopBtn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          const recognition = activeRecognitions[targetId];
-          if (recognition) {
-            recognition.stop();
-          }
-          micBtn.classList.remove('listening');
-          stopBtn.style.display = 'none';
-
-          if (targetId === 'map-address-search' && targetInput.value.trim()) {
-            searchMapLocation();
-          }
-        });
-      }
-    });
   }
 
   // Автоматическая подписка на изменения таблицы clients в Supabase Realtime
